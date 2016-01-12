@@ -1,0 +1,103 @@
+{"template":
+{
+    "heat_template_version": "2013-05-23",
+    "description": "cluster-AWS-AutoScaling-template",
+    "resources": {
+        "cluster-AWS-AutoScaling-template": {
+            "type": "AWS::AutoScaling::LaunchConfiguration",
+            "properties": {
+                "SecurityGroups": [
+                    "xxxxxxxxxx"
+                ],
+                "InstanceType": "windows.medium",
+                "KeyName": "xxxxxxxxxx",
+                "ImageId": "xxxxxxxxxx"
+            }
+        },
+        "IncomingAlarmHigh": {
+            "type": "OS::Ceilometer::Alarm",
+            "properties": {
+                "meter_name": "cpu_util",
+                "alarm_actions": [
+                    {
+                        "Ref": "WebServerScaleUpPolicy"
+                    }
+                ],
+                "description": "Scale-up if the average CPU > 20% for 1 minute",
+                "matching_metadata": {
+                    "metadata.user_metadata.stack": {
+                        "Ref": "OS::stack_id"
+                    }
+                },
+                "evaluation_periods": 1,
+                "period": 60,
+                "statistic": "avg",
+                "threshold": 20,
+                "comparison_operator": "gt"
+            }
+        },
+        "WebServerScaleUpPolicy": {
+            "type": "AWS::AutoScaling::ScalingPolicy",
+            "properties": {
+                "ScalingAdjustment": 2,
+                "AutoScalingGroupName": {
+                    "Ref": "a_cluster"
+                },
+                "Cooldown": 30,
+                "AdjustmentType": "ChangeInCapacity"
+            }
+        },
+        "a_cluster": {
+            "type": "AWS::AutoScaling::AutoScalingGroup",
+            "properties": {
+                "DesiredCapacity": 1,
+                "Tags": [
+                    {
+                        "Key": "metering.stack",
+                        "Value": {
+                            "Ref": "OS::stack_id"
+                        }
+                    }
+                ],
+                "Cooldown": 10,
+                "LaunchConfigurationName": {
+                    "Ref": "cluster-AWS-AutoScaling-template"
+                },
+                "MinSize": 1,
+                "MaxSize": 3,
+                "VPCZoneIdentifier": [
+                    "xxxxxxxxxx"
+                ],
+                "LoadBalancerNames": [
+                    {
+                        "Ref": "9fec675b-f2ac-4bdd-b22f-5992b06b2f23"
+                    }
+                ],
+                "AvailabilityZones": [
+                    "TPA1"
+                ]
+            }
+        },
+        "9fec675b-f2ac-4bdd-b22f-5992b06b2f23": {
+            "type": "OS::Neutron::LoadBalancer",
+            "properties": {
+                "protocol_port": 443,
+                "pool_id": "9fec675b-f2ac-4bdd-b22f-5992b06b2f23"
+            }
+        },
+        "WebServerScaleDownPolicy": {
+            "type": "AWS::AutoScaling::ScalingPolicy",
+            "properties": {
+                "ScalingAdjustment": -1,
+                "AutoScalingGroupName": {
+                    "Ref": "cluster-AWS-AutoScaling-template"
+                },
+                "Cooldown": 30,
+                "AdjustmentType": "ChangeInCapacity"
+            }
+        }
+      
+    }
+}
+, "stack_name":"awsTemplate"
+}
