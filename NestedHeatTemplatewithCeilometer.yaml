@@ -1,0 +1,95 @@
+{
+    "template": {
+        "description": "Test Heat Template with Ceilometer",
+        "resources": {
+                "MinimumCapacityTest_0": {
+                    "type": "OS::Heat::AutoScalingGroup",
+                    "properties": {
+                        "cooldown": 20,
+                        "desired_capacity": 1,
+                        "min_size": 1,
+                        "max_size": 3,
+                        "resource": {
+                            "type": "http://xxx.xxx.xxx.xxx/HeatNestedSubTemplate.yaml",
+                            "properties": {
+                                "flavor": "linux.medium",
+                                "image": ".........",
+                                "sec_groups": ["........."],
+                                "in_net_id": ".........",
+                                "ext_net_id": ".........",
+                                "subnet_id": ".........",
+                                "az": "US-EAST1",
+                                "region": "EAST",
+                                "platform": "0",
+                                "tenant": "N-A",
+                                "app": "NA",
+                                "pool_id": { "Ref" : "6317d9e6-6ffd-4de2-9a3b-3105d5c5f60d"},
+                                "metadata": {
+                                    "metering.stack": {"Ref": "OS::stack_id"},
+                                    "metering.AutoScalingGroupName": "MinimumCapacityTest_0"
+                                },
+                                "user_data": "while true\ndo\necho -e \"HTTP/1.0 200 OK\\r\\n\\r\\n`hostname`\" | sudo nc -l -p 80\ndone\n"
+                            }
+                        }
+                    }
+                },
+                "scale_up_policy0": {
+                    "type": "OS::Heat::ScalingPolicy",
+                    "properties": {
+                        "adjustment_type": "change_in_capacity",
+                        "auto_scaling_group_id": {
+                            "Ref": "MinimumCapacityTest_0"
+                        },
+                        "cooldown": 10,
+                        "scaling_adjustment": 1
+                    }
+                },
+                "scale_down_policy0": {
+                    "type": "OS::Heat::ScalingPolicy",
+                    "properties": {
+                        "adjustment_type": "change_in_capacity",
+                        "auto_scaling_group_id": {
+                            "Ref": "MinimumCapacityTest_0"
+                        },
+                        "cooldown": 10,
+                        "scaling_adjustment": -1
+                    }
+                },
+            "6317d9e6-6ffd-4de2-9a3b-3105d5c5f60d": {
+                "type": "OS::Neutron::LoadBalancer",
+                "properties": {
+                    "protocol_port": 443,
+                    "pool_id": "6317d9e6-6ffd-4de2-9a3b-3105d5c5f60d"
+                }
+            },
+            "cpu_alarm_high": {
+                "type": "OS::Ceilometer::Alarm",
+                "properties": {
+                    "meter_name": "cpu_util",
+                    "description": "Scale-up if the average CPU > 60% for 180 seconds",
+                    "comparison_operator": "gt",
+                    "statistic": "avg",
+                    "period": 180,
+                    "evaluation_periods": 1,
+                    "threshold": 60,
+                    "alarm_actions": [
+                        {
+                            "get_attr": [
+                                "scale_up_policy0",
+                                "alarm_url"
+                            ]
+                        }
+                    ],
+                    "matching_metadata": {
+                        "metadata.user_metadata.stack": {
+                            "Ref": "OS::stack_id"
+                        }
+                    }
+                }
+            }
+        },
+        "heat_template_version": "2013-05-23"
+    },
+    "disable_rollback": "true",
+    "stack_name": "MinimumCapacityTest"
+}
